@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"strconv"
 
 	"github.com/xuri/excelize/v2"
@@ -24,13 +25,18 @@ var branchMap = map[string]string{
 	"A1": "Chemical", "A2": "Civil", "A3": "EEE", "A4": "Mechanical",
 	"A5": "Pharma", "A7": "CSE", "A8": "ENI", "AA": "ECE",
 	"AB": "Manufacturing", "AD": "MnC", "B1": "MSc Biology", "B2": "MSc Chemistry",
-	"B3": "MSc Economics", "B4": "MScMaths", "B5": "MSc Physics",
+	"B3": "MSc Economics", "B4": "MSc Maths", "B5": "MSc Physics",
 }
 
 const tolerance = 0.01 //handling floating point precision
 
 func main() {
-	filePath := "C:\\Users\\Ditya\\Downloads\\PostmanBackendTask1_Data.xlsx"
+	if len(os.Args) < 2 {
+		fmt.Println("Usage - go run main.go <path-to-file.xlsx>")
+		os.Exit(1)
+	}
+
+	filePath := os.Args[1]
 
 	f, err := excelize.OpenFile(filePath)
 	if err != nil {
