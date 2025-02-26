@@ -10,6 +10,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// Student structure
 type Student struct {
 	EmpID      string
 	Branch     string
@@ -21,6 +22,7 @@ type Student struct {
 	Total      float64
 }
 
+// Branch name mapping
 var branchMap = map[string]string{
 	"A1": "Chemical", "A2": "Civil", "A3": "EEE", "A4": "Mechanical",
 	"A5": "Pharma", "A7": "CSE", "A8": "ENI", "AA": "ECE",
@@ -28,7 +30,7 @@ var branchMap = map[string]string{
 	"B3": "MSc Economics", "B4": "MSc Maths", "B5": "MSc Physics",
 }
 
-const tolerance = 0.01 //handling floating point precision
+const tolerance = 0.01 // handling floating point precision
 
 func main() {
 	if len(os.Args) < 2 {
@@ -38,6 +40,13 @@ func main() {
 
 	filePath := os.Args[1]
 
+	students, branchSums, branchCounts, totalSum, totalCount := processFile(filePath)
+
+	printResults(students, branchSums, branchCounts, totalSum, totalCount)
+}
+
+// Processes the Excel file and returns the necessary data
+func processFile(filePath string) ([]Student, map[string]float64, map[string]int, float64, int) {
 	f, err := excelize.OpenFile(filePath)
 	if err != nil {
 		log.Fatalf("Failed to open file: %v", err)
@@ -61,58 +70,58 @@ func main() {
 			continue
 		}
 
-		empID := row[2]
-		campusID := row[3]
-		quiz, _ := strconv.ParseFloat(row[4], 64)
-		midSem, _ := strconv.ParseFloat(row[5], 64)
-		labTest, _ := strconv.ParseFloat(row[6], 64)
-		weeklyLabs, _ := strconv.ParseFloat(row[7], 64)
-		compre, _ := strconv.ParseFloat(row[9], 64)
-		total, _ := strconv.ParseFloat(row[10], 64)
-
-		branch := extractBranch(campusID)
-		if branch == "" {
-			log.Printf("Skipping row %d due to invalid branch ID: %s\n", i+1, campusID)
+		student, valid := parseRow(row)
+		if !valid {
 			continue
 		}
 
-		// Calculate Pre-Compre and validate
-		preCompre := quiz + midSem + labTest + weeklyLabs
-		calculatedTotal := preCompre + compre
-
-		if !isWithinTolerance(calculatedTotal, total) {
-			log.Printf("Discrepancy in total marks for EmpID %s: Expected %.2f, Found %.2f\n",
-				empID, calculatedTotal, total)
-		}
-
-		student := Student{
-			EmpID:      empID,
-			Branch:     branch,
-			Quiz:       quiz,
-			MidSem:     midSem,
-			LabTest:    labTest,
-			WeeklyLabs: weeklyLabs,
-			Compre:     compre,
-			Total:      total,
-		}
 		students = append(students, student)
-
-		branchSums[branch] += total
-		branchCounts[branch]++
-		totalSum += total
+		branchSums[student.Branch] += student.Total
+		branchCounts[student.Branch]++
+		totalSum += student.Total
 		totalCount++
 	}
 
-	fmt.Println("======================================")
-	fmt.Println(" Top 3 Students for Each Component ")
-	printTopStudents(students)
+	return students, branchSums, branchCounts, totalSum, totalCount
+}
 
-	fmt.Println("\n======================================")
-	fmt.Println(" Overall and Branch-Wise Averages ")
-	fmt.Printf("Overall Average Marks: %.2f\n", totalSum/float64(totalCount))
-	for branch, sum := range branchSums {
-		fmt.Printf("Branch %s (%s) Average Marks: %.2f\n", branch, branchMap[branch], sum/float64(branchCounts[branch]))
+// Parses a row from the Excel file and returns a Student struct and a validity flag
+func parseRow(row []string) (Student, bool) {
+	empID := row[2]
+	campusID := row[3]
+	quiz, _ := strconv.ParseFloat(row[4], 64)
+	midSem, _ := strconv.ParseFloat(row[5], 64)
+	labTest, _ := strconv.ParseFloat(row[6], 64)
+	weeklyLabs, _ := strconv.ParseFloat(row[7], 64)
+	compre, _ := strconv.ParseFloat(row[9], 64)
+	total, _ := strconv.ParseFloat(row[10], 64)
+
+	branch := extractBranch(campusID)
+	if branch == "" {
+		log.Printf("Skipping row due to invalid branch ID: %s\n", campusID)
+		return Student{}, false
 	}
+
+	preCompre := quiz + midSem + labTest + weeklyLabs
+	calculatedTotal := preCompre + compre
+
+	if !isWithinTolerance(calculatedTotal, total) {
+		log.Printf("Discrepancy in total marks for EmpID %s: Expected %.2f, Found %.2f\n",
+			empID, calculatedTotal, total)
+	}
+
+	student := Student{
+		EmpID:      empID,
+		Branch:     branch,
+		Quiz:       quiz,
+		MidSem:     midSem,
+		LabTest:    labTest,
+		WeeklyLabs: weeklyLabs,
+		Compre:     compre,
+		Total:      total,
+	}
+
+	return student, true
 }
 
 // Extracts branch from Campus ID
@@ -132,6 +141,21 @@ func isWithinTolerance(a, b float64) bool {
 	return math.Abs(a-b) <= tolerance
 }
 
+// Prints the results
+func printResults(students []Student, branchSums map[string]float64, branchCounts map[string]int, totalSum float64, totalCount int) {
+	fmt.Println("======================================")
+	fmt.Println("Top 3 Students for Each Component")
+	printTopStudents(students)
+
+	fmt.Println("\n======================================")
+	fmt.Println("Overall and Branch-Wise Averages")
+	fmt.Printf("Overall Average Marks: %.2f\n", totalSum/float64(totalCount))
+	for branch, sum := range branchSums {
+		fmt.Printf("Branch %s (%s) Average Marks: %.2f\n", branch, branchMap[branch], sum/float64(branchCounts[branch]))
+	}
+}
+
+// Prints top 3 students for each component
 func printTopStudents(students []Student) {
 	components := []struct {
 		name   string
@@ -154,6 +178,7 @@ func printTopStudents(students []Student) {
 	}
 }
 
+// Sorts students by a given component
 func sortByComponent(students []Student, getVal func(Student) float64) []Student {
 	sorted := append([]Student{}, students...)
 	for i := 0; i < len(sorted)-1; i++ {
@@ -166,6 +191,7 @@ func sortByComponent(students []Student, getVal func(Student) float64) []Student
 	return sorted
 }
 
+// Returns the minimum of two numbers
 func min(a, b int) int {
 	if a < b {
 		return a
