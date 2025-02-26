@@ -80,7 +80,7 @@ func main() {
 		preCompre := quiz + midSem + labTest + weeklyLabs
 		calculatedTotal := preCompre + compre
 
-		if math.Abs(calculatedTotal-total) > tolerance {
+		if !isWithinTolerance(calculatedTotal, total) {
 			log.Printf("Discrepancy in total marks for EmpID %s: Expected %.2f, Found %.2f\n",
 				empID, calculatedTotal, total)
 		}
@@ -125,6 +125,11 @@ func extractBranch(campusID string) string {
 		return branch
 	}
 	return ""
+}
+
+// Checks if two floating-point numbers are within a specified tolerance
+func isWithinTolerance(a, b float64) bool {
+	return math.Abs(a-b) <= tolerance
 }
 
 func printTopStudents(students []Student) {
