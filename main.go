@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"sort"
 	"strconv"
 
 	"github.com/xuri/excelize/v2"
@@ -24,10 +25,12 @@ type Student struct {
 
 // Branch name mapping
 var branchMap = map[string]string{
-	"A1": "Chemical", "A2": "Civil", "A3": "EEE", "A4": "Mechanical",
-	"A5": "Pharma", "A7": "CSE", "A8": "ENI", "AA": "ECE",
-	"AB": "Manufacturing", "AD": "MnC", "B1": "MSc Biology", "B2": "MSc Chemistry",
-	"B3": "MSc Economics", "B4": "MSc Maths", "B5": "MSc Physics",
+	"2021A2": "Civil 2021", "2024A3": "EEE 2024", "2024A4": "Mechanical 2024",
+	"2024A5": "Pharma 2024", "2024A7": "CSE 2024", "2024A8": "ENI 2024", "2024AA": "ECE 2024",
+	"2024AD": "MnC 2024", "2024B1": "MSc Biology", "2020B5": "MSc Physics 2020", "2021A7": "CSE 2021", "2022A7": "CSE 2022",
+	"2023A7": "CSE 2023", "2021A8": "ENI 2021", "2021AA": "ECE 2021", "2021B1": "Msc Biology 2021", "2021B4": "Msc Maths 2021",
+	"2021B5": "Msc Physics 2021", "2022A1": "Chemical 2022", "2022A2": "Civil 2022", "2022A3": "EEE 2022", "2022A4": "Mechanical 2022",
+	"2022AA": "ECE 2022", "2022B2": "MSc Chemistry 2022", "2023A5": "Pharma 2023", "2023A8": "ENI 2023",
 }
 
 const tolerance = 0.01 // handling floating point precision
@@ -97,7 +100,7 @@ func parseRow(row []string) (Student, bool) {
 	total, _ := strconv.ParseFloat(row[10], 64)
 
 	branch := extractBranch(campusID)
-	if branch == "" {
+	if len(branch) < 6 {
 		log.Printf("Skipping row due to invalid branch ID: %s\n", campusID)
 		return Student{}, false
 	}
@@ -129,7 +132,7 @@ func extractBranch(campusID string) string {
 	if len(campusID) < 6 {
 		return ""
 	}
-	branch := campusID[4:6]
+	branch := campusID[:6]
 	if _, exists := branchMap[branch]; exists {
 		return branch
 	}
@@ -178,16 +181,12 @@ func printTopStudents(students []Student) {
 	}
 }
 
-// Sorts students by a given component
+// Sorts students by a given component using sort.Slice
 func sortByComponent(students []Student, getVal func(Student) float64) []Student {
 	sorted := append([]Student{}, students...)
-	for i := 0; i < len(sorted)-1; i++ {
-		for j := 0; j < len(sorted)-i-1; j++ {
-			if getVal(sorted[j]) < getVal(sorted[j+1]) {
-				sorted[j], sorted[j+1] = sorted[j+1], sorted[j]
-			}
-		}
-	}
+	sort.Slice(sorted, func(i, j int) bool {
+		return getVal(sorted[i]) > getVal(sorted[j])
+	})
 	return sorted
 }
 
